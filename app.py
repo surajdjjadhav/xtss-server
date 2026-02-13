@@ -1,9 +1,16 @@
 from flask import Flask, request, send_file, jsonify
-import os, uuid, re, threading
-from pydub import AudioSegment
-from pydub.silence import detect_nonsilent
+import os, uuid, re, threading, sys, traceback
 
 app = Flask(__name__)
+
+
+# ---------------- GLOBAL CRASH LOGGER ----------------
+def log_exceptions(type, value, tb):
+    traceback.print_exception(type, value, tb)
+
+
+sys.excepthook = log_exceptions
+
 
 # ---------------- PATHS ----------------
 TEMP = "temp"
@@ -36,8 +43,19 @@ def load_model():
         print("XTTS ready")
 
 
+# background preload (non-blocking)
+def warmup():
+    try:
+        load_model()
+    except Exception as e:
+        print("Model warmup failed:", e)
+
+
 # ---------------- AUDIO PREP ----------------
 def prepare_speaker():
+    from pydub import AudioSegment
+    from pydub.silence import detect_nonsilent
+
     if not os.path.exists(SPEAKER_MP3):
         print("speaker.mp3 missing — waiting for upload")
         return
@@ -100,6 +118,8 @@ def health():
 @app.route("/clone", methods=["POST"])
 def clone():
 
+    from pydub import AudioSegment
+
     data = request.get_json()
     if not data or "text" not in data:
         return jsonify({"error": "text missing"}), 400
@@ -109,7 +129,6 @@ def clone():
         if not os.path.exists(SPEAKER_PROCESSED):
             return jsonify({"error": "upload speaker.mp3 first"}), 400
 
-    # ensure single model load
     with model_lock:
         load_model()
 
@@ -136,6 +155,10 @@ def clone():
     final_audio.export(out, format="wav")
 
     return send_file(out, mimetype="audio/wav")
+
+
+# start background model preload
+threading.Thread(target=warmup, daemon=True).start()
 
 
 # ---------------- START ----------------
