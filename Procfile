@@ -1,1 +1,1 @@
-web: python app.py
+web: bash build.sh && python app.py
