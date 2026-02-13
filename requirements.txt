@@ -1,8 +1,7 @@
-flask
-TTS
-torch
-torchaudio
+flask==3.0.3
+TTS==0.22.0
 pydub
 numpy
 scipy
-ffmpeg-python
+torch
+torchaudio
