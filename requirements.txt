@@ -1,0 +1,8 @@
+flask
+TTS
+torch
+torchaudio
+pydub
+numpy
+scipy
+ffmpeg-python
